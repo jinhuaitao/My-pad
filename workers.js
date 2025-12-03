@@ -1,9 +1,9 @@
 /**
- * Workers.js 代码高亮工具 + KV 存储、删除与列表功能 (最终版)
+ * Workers.js 代码工具 - 仅保留代码编辑器，支持自定义名称保存。
  *
  * 验证模式：单访问令牌/密码 (ACCESS_PASSWORD)
  * 验证方式：URL参数 (?token=) 或 HTTP头 (X-Access-Token)
- * 状态码修改：未授权访问返回 403 Forbidden，以避免浏览器弹出原生 Basic Auth 弹窗。
+ * 状态码：未授权访问返回 403 Forbidden，以避免浏览器弹出原生 Basic Auth 弹窗。
  */
 
 export default {
@@ -11,7 +11,8 @@ export default {
       const corsHeaders = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Access-Token',
+        // 注意：现在 API 请求需要 Content-Type: application/json
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Access-Token', 
       };
   
       const url = new URL(request.url);
@@ -77,14 +78,36 @@ export default {
           if (!env.CODE_KV) {
             throw new Error('KV 未绑定，请在后台设置 CODE_KV');
           }
-          const text = await request.text();
+          
+          // **!!! 关键修改：从请求 body 中解析 JSON 数据 !!!**
+          const body = await request.json(); 
+          const text = body.code;
+          let customId = body.id; // 获取自定义 ID
+          
           if (!text || text.trim().length === 0) {
             return new Response(JSON.stringify({ error: '内容不能为空' }), { status: 400, headers: corsHeaders });
           }
           
-          // 生成 8 位随机 ID
-          const id = crypto.randomUUID().substring(0, 8);
-          
+          let id;
+          if (customId) {
+            // 验证并清理 ID (仅允许字母数字、连字符和下划线，转为小写)
+            customId = customId.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
+            
+            if (customId.length < 3 || customId.length > 50) {
+               return new Response(JSON.stringify({ error: '自定义名称长度须在 3-50 字符之间' }), { status: 400, headers: corsHeaders });
+            }
+            
+            // 检查 ID 是否已存在 (如果存在则不允许覆盖)
+            const existingCode = await env.CODE_KV.get(customId);
+            if (existingCode !== null) {
+              return new Response(JSON.stringify({ error: `名称 '${customId}' 已存在。请更换一个名称。` }), { status: 409, headers: corsHeaders });
+            }
+            id = customId;
+          } else {
+            // 生成 8 位随机 ID
+            id = crypto.randomUUID().substring(0, 8);
+          }
+  
           // 存入 KV (默认过期时间 30 天)
           await env.CODE_KV.put(id, text, { expirationTtl: 60 * 60 * 24 * 30 });
           
@@ -92,7 +115,8 @@ export default {
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
           });
         } catch (err) {
-          return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+          // 如果 JSON 解析失败，会进入这里
+          return new Response(JSON.stringify({ error: err.message || '无效的请求格式，请确保内容是 JSON。' }), { status: 500, headers: corsHeaders });
         }
       }
   
@@ -160,7 +184,7 @@ export default {
   <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Workers.js 代码高亮工具</title>
+      <title>Workers.js 代码存储工具</title>
       <style>
           *{margin:0;padding:0;box-sizing:border-box}
           body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px}
@@ -168,18 +192,45 @@ export default {
           header{background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:white;padding:30px;text-align:center;position:relative}
           header h1{font-size:2.5em;margin-bottom:10px;text-shadow:2px 2px 4px rgba(0,0,0,0.3)}
           header p{font-size:1.2em;opacity:0.9}
-          .main-content{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:30px}
-          .editor-section,.preview-section{background:white;border-radius:10px;box-shadow:0 5px 15px rgba(0,0,0,0.08);overflow:hidden;display:flex;flex-direction:column}
+          /* 布局修改：只保留一列 */
+          .main-content{display:block;padding:30px} 
+          .editor-section{background:white;border-radius:10px;box-shadow:0 5px 15px rgba(0,0,0,0.08);overflow:hidden;display:flex;flex-direction:column}
           .section-header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:15px 20px;font-weight:bold;display:flex;justify-content:space-between;align-items:center}
-          .editor-wrapper,.preview-wrapper{padding:20px;height:500px;overflow:auto;flex-grow:1}
+          
+          /* Key 输入区域样式 */
+          .key-input-wrapper {
+              padding: 10px 20px 0;
+              background: #f0f0f5;
+              border-bottom: 1px solid #e0e0e0;
+          }
+          .key-input-wrapper label {
+              font-size: 14px;
+              font-weight: 600;
+              color: #444;
+              display: block;
+              margin-bottom: 5px;
+          }
+          #customKeyInput {
+              width: 100%;
+              padding: 8px;
+              border: 1px solid #ccc;
+              border-radius: 4px;
+              box-sizing: border-box;
+              margin-bottom: 10px;
+          }
+  
+          .editor-wrapper{padding:20px;height:70vh;min-height:400px;overflow:auto;flex-grow:1} /* 增加高度 */
           #codeInput{width:100%;height:100%;border:2px solid #e0e0e0;border-radius:8px;padding:15px;font-family:"Consolas","Monaco","Courier New",monospace;font-size:14px;resize:none;outline:none;transition:border-color 0.3s}
           #codeInput:focus{border-color:#667eea}
-          #highlightedOutput{width:100%;height:100%;border:2px solid #e0e0e0;border-radius:8px;padding:15px;font-family:"Consolas","Monaco","Courier New",monospace;font-size:14px;background:#f8f9fa;overflow:auto;white-space:pre-wrap;word-wrap:break-word}
           .controls{padding:20px 30px;background:#f8f9fa;display:flex;gap:15px;flex-wrap:wrap;justify-content:center}
           button{padding:12px 24px;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.3s;display:flex;align-items:center;gap:8px}
           
           .btn-primary{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white}
           .btn-primary:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(102,126,234,0.4)}
+          
+          .btn-success{background:linear-gradient(135deg,#42e695 0%,#3bb2b8 100%);color:white}
+          .btn-success:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(66,230,149,0.4)}
+          .btn-success:disabled{opacity:0.7;cursor:not-allowed;transform:none}
           
           .btn-secondary{background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:white}
           .btn-secondary:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(240,147,251,0.4)}
@@ -187,24 +238,6 @@ export default {
           .btn-danger{background:linear-gradient(135deg,#ff6b6b 0%,#ee5a24 100%);color:white}
           .btn-danger:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(255,107,107,0.4)}
           .btn-danger:disabled{opacity:0.7;cursor:not-allowed;transform:none}
-          
-          .btn-success{background:linear-gradient(135deg,#42e695 0%,#3bb2b8 100%);color:white}
-          .btn-success:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(66,230,149,0.4)}
-          .btn-success:disabled{opacity:0.7;cursor:not-allowed;transform:none}
-  
-          .stats{padding:20px 30px;background:white;display:flex;justify-content:space-around;border-top:1px solid #e0e0e0}
-          .stat-item{text-align:center}
-          .stat-value{font-size:24px;font-weight:bold;color:#667eea;display:block}
-          .stat-label{color:#666;font-size:14px;margin-top:5px}
-          
-          .keyword{color:#d73a49;font-weight:bold}
-          .function{color:#6f42c1}
-          .string{color:#032f62}
-          .comment{color:#6a737d;font-style:italic}
-          .number{color:#005cc5}
-          .workers-specific{color:#e36209;font-weight:bold}
-          .bracket{color:#24292e;font-weight:bold}
-          .operator{color:#d73a49}
           
           .toast{position:fixed;top:20px;right:20px;background:#28a745;color:white;padding:15px 20px;border-radius:8px;box-shadow:0 5px 15px rgba(0,0,0,0.2);opacity:0;transform:translateY(-20px);transition:all 0.3s;z-index:1000}
           .toast.error{background:#dc3545}
@@ -214,7 +247,7 @@ export default {
           .spinner{width:40px;height:40px;border:4px solid #f3f3f3;border-top:4px solid #667eea;border-radius:50%;animation:spin 1s linear infinite}
           @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
           
-          /* New Modal Styles for List */
+          /* Modal Styles */
           .modal-overlay {
               position: fixed;
               top: 0;
@@ -222,7 +255,7 @@ export default {
               width: 100%;
               height: 100%;
               background: rgba(0, 0, 0, 0.6);
-              display: none; /* 默认隐藏 */
+              display: none; 
               justify-content: center;
               align-items: center;
               z-index: 1000;
@@ -262,9 +295,6 @@ export default {
               color: #999;
               line-height: 1;
           }
-          .close-btn:hover {
-              color: #333;
-          }
           .modal-body {
               flex-grow: 1;
               overflow-y: auto;
@@ -290,7 +320,7 @@ export default {
               font-size: 0.9em;
           }
           @media (max-width:768px){
-              .main-content{grid-template-columns:1fr}
+              .main-content{padding:20px}
               header h1{font-size:2em}
               .controls{flex-direction:column;align-items:stretch}
               .modal-content{max-height: 90vh; width: 95%;}
@@ -300,8 +330,8 @@ export default {
   <body>
       <div class="container">
           <header>
-              <h1>🚀 Workers.js 代码高亮工具</h1>
-              <p>专为 Cloudflare Workers.js 设计的在线代码高亮和格式化工具</p>
+              <h1>🚀 Workers.js 代码存储工具</h1>
+              <p>基于 Cloudflare Workers KV 的代码片段存储与共享工具</p>
           </header>
           
           <div class="main-content">
@@ -310,25 +340,21 @@ export default {
                       <span>📝 代码编辑器</span>
                       <span id="inputStats">0 行 · 0 字符</span>
                   </div>
+                  
+                  <div class="key-input-wrapper">
+                      <label for="customKeyInput">自定义名称/ID (可选):</label>
+                      <input type="text" id="customKeyInput" placeholder="例如: my-worker-function-v2 (不填则自动生成 ID)" maxlength="50">
+                  </div>
+  
                   <div class="editor-wrapper" style="position:relative">
-                      <textarea id="codeInput" placeholder="在此输入您的 Workers.js 代码..."></textarea>
+                      <textarea id="codeInput" placeholder="在此输入您的代码..."></textarea>
                       <div id="loadingOverlay" class="loading-overlay"><div class="spinner"></div></div>
                   </div>
               </div>
               
-              <div class="preview-section">
-                  <div class="section-header">
-                      <span>🎨 高亮预览</span>
-                      <span id="outputStats">0 行 · 0 关键字</span>
-                  </div>
-                  <div class="preview-wrapper">
-                      <div id="highlightedOutput"></div>
-                  </div>
               </div>
-          </div>
   
           <div class="controls">
-              <button class="btn-primary" onclick="highlightCode()"><span>✨</span> 高亮代码</button>
               <button class="btn-success" id="btnSave" onclick="saveToCloud()"><span>☁️</span> 保存/分享</button>
               <button class="btn-secondary" onclick="copyCode()"><span>📑</span> 复制代码</button>
               <button class="btn-secondary" onclick="showSavedList()"><span>📋</span> 查看列表</button>
@@ -338,13 +364,7 @@ export default {
               <button class="btn-danger" onclick="clearAll()"><span>🗑️</span> 清空内容</button>
           </div>
   
-          <div class="stats">
-              <div class="stat-item"><span class="stat-value" id="lineCount">0</span><div class="stat-label">行数</div></div>
-              <div class="stat-item"><span class="stat-value" id="charCount">0</span><div class="stat-label">字符数</div></div>
-              <div class="stat-item"><span class="stat-value" id="keywordCount">0</span><div class="stat-label">关键字数</div></div>
-              <div class="stat-item"><span class="stat-value" id="functionCount">0</span><div class="stat-label">函数数</div></div>
           </div>
-      </div>
       
       <div id="toast" class="toast"></div>
   
@@ -364,8 +384,6 @@ export default {
       </div>
   
       <script>
-          const jsKeywords=["break","case","catch","class","const","continue","debugger","default","delete","do","else","export","extends","false","finally","for","function","if","import","in","instanceof","let","new","null","return","super","switch","this","throw","true","try","typeof","var","void","while","with","yield","async","await"];
-          const workersObjects=["addEventListener","removeEventListener","fetch","request","response","Request","Response","Headers","URL","URLSearchParams","DurableObject","KVNamespace","R2Bucket","Cache","crypto","console","setTimeout","clearTimeout","setInterval","clearInterval","atob","btoa","WebSocket","TransformStream","ReadableStream","WritableStream","env","ctx","waitUntil"];
           let highlightTimeout;
   
           function getLoadedId() {
@@ -394,7 +412,6 @@ export default {
           document.addEventListener("DOMContentLoaded", function(){
               const codeInput=document.getElementById("codeInput");
               codeInput.addEventListener("input",handleInput);
-              codeInput.addEventListener("keydown",handleKeydown);
               
               const id = getLoadedId();
               if(id){
@@ -406,15 +423,8 @@ export default {
   
           function handleInput(){
               clearTimeout(highlightTimeout);
-              updateInputStats();
-              highlightTimeout=setTimeout(function(){highlightCode()},500);
-          }
-  
-          function handleKeydown(e){
-              if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){e.preventDefault();highlightCode()}
-              else if((e.ctrlKey||e.metaKey)&&e.key==="l"){e.preventDefault();clearAll()}
-              else if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==="C"){e.preventDefault();copyCode()}
-              else if((e.ctrlKey||e.metaKey)&&e.key==="s"){e.preventDefault();saveToCloud()} // Ctrl+S 保存
+              // 延迟更新字符统计信息
+              highlightTimeout=setTimeout(function(){updateInputStats()},200);
           }
   
           // --- List Functions ---
@@ -432,7 +442,6 @@ export default {
               const listBody = document.getElementById('listBody');
               listBody.innerHTML = '<p class="list-empty">加载中... <div class="spinner" style="margin:10px auto;"></div></p>';
               
-              // 自动获取 token，用于 API 访问
               const token = getAuthToken();
               const headers = token ? { 'X-Access-Token': token } : {};
   
@@ -448,8 +457,8 @@ export default {
                               item.className = 'list-item';
                               item.textContent = id;
                               item.onclick = () => {
-                                  // 加载代码并关闭 Modal
-                                  window.location.href = window.location.pathname + '?id=' + id + (token ? '&token=' + token : '');
+                                  const tokenParam = token ? '&token=' + token : '';
+                                  window.location.href = window.location.pathname + '?id=' + id + tokenParam;
                                   closeSavedList();
                               };
                               listBody.appendChild(item);
@@ -474,18 +483,20 @@ export default {
           }
           // --- End List Functions ---
           
-          // --- API Helper Function (Added for Auth) ---
           function getAuthHeaders(includeContentType = true) {
               const token = getAuthToken();
               const headers = {};
               if (token) headers['X-Access-Token'] = token;
-              if (includeContentType) headers['Content-Type'] = 'text/plain';
-              return headers;
+              // 注意: 在 saveToCloud 中我们会手动设置 Content-Type: application/json
+              // 在其他 API (GET/DELETE/LIST) 中不需要 Content-Type
+              return headers; 
           }
-          // --- End API Helper Function ---
   
           async function saveToCloud() {
               const code = document.getElementById("codeInput").value;
+              // **!!! 关键修改：获取自定义 Key/ID !!!**
+              const customKey = document.getElementById("customKeyInput").value.trim(); 
+  
               if(!code.trim()) {
                   showToast("内容为空，无法保存", true);
                   return;
@@ -497,27 +508,41 @@ export default {
               btn.disabled = true;
   
               try {
+                  // 设置 headers
                   const headers = getAuthHeaders();
+                  headers['Content-Type'] = 'application/json'; // 必须指定 JSON
+  
+                  // 构建 payload
+                  const payload = {
+                      code: code
+                  };
+                  if (customKey) {
+                      payload.id = customKey; // 将自定义 Key 加入 payload
+                  }
+                  
                   const response = await fetch('/api/save', {
                       method: 'POST',
                       headers: headers,
-                      body: code
+                      body: JSON.stringify(payload) // 发送 JSON
                   });
+                  
                   const data = await response.json();
                   
-                  if(data.success) {
+                  if(response.ok && data.success) { // 检查 response.ok 确保 4xx 错误也被捕获
                       const tokenParam = getAuthToken() ? '&token=' + getAuthToken() : '';
                       const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?id=' + data.id + tokenParam;
                       window.history.pushState({path:newUrl},'',newUrl);
                       
                       navigator.clipboard.writeText(newUrl);
-                      showToast("已保存！分享链接已复制");
+                      showToast("已保存！分享链接已复制 (ID: " + data.id + ")");
                       updateDeleteButton();
+                      // 清空自定义 Key 输入框
+                      document.getElementById("customKeyInput").value = '';
                   } else {
                       showToast("保存失败: " + (data.error || "未知错误"), true);
                   }
               } catch(e) {
-                  showToast("网络错误: " + e.message, true);
+                  showToast("网络错误或请求格式错误: " + e.message, true);
               } finally {
                   btn.innerHTML = originalText;
                   btn.disabled = false;
@@ -537,9 +562,9 @@ export default {
                   if(response.ok) {
                       const data = await response.json();
                       document.getElementById("codeInput").value = data.code;
-                      highlightCode();
                       updateInputStats();
-                      showToast("代码加载成功");
+                      showToast("代码加载成功 (ID: " + id + ")");
+                      document.getElementById("customKeyInput").value = id; // 加载时填入自定义 Key 框
                   } else {
                       showToast("未找到指定的代码片段或认证失败", true);
                       clearAll(true);
@@ -568,7 +593,7 @@ export default {
               btn.disabled = true;
   
               try {
-                  const headers = getAuthHeaders(false); // No Content-Type needed for DELETE
+                  const headers = getAuthHeaders();
                   const response = await fetch('/api/delete?id=' + id, {
                       method: 'DELETE',
                       headers: headers
@@ -590,71 +615,6 @@ export default {
               }
           }
           
-          function highlightCode(){
-              const code=document.getElementById("codeInput").value;
-              if(!code.trim()){
-                  document.getElementById("highlightedOutput").innerHTML="";
-                  updateStats(0,0,0,0);
-                  return
-              }
-              let highlighted=code;
-              let keywordCount=0;
-              let functionCount=0;
-              
-              highlighted=highlighted.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-              
-              // Comments
-              highlighted=highlighted.replace(/\\/\\/.*$/gm,function(match){return '<span class="comment">'+match+'</span>'});
-              highlighted=highlighted.replace(/\\/\\*[\\s\\S]*?\\*\\//g,function(match){return '<span class="comment">'+match+'</span>'});
-              
-              // Strings
-              const stringRegex=new RegExp('(["\\\'“])((?:\\\\\\\\.|(?!\\\\1)[^\\\\\\\\])*)\\\\1','g');
-              highlighted=highlighted.replace(stringRegex,'<span class="string">$1$2$1</span>');
-              
-              // Numbers
-              highlighted=highlighted.replace(/\\b(\\d+\\.?\\d*)\\b/g,'<span class="number">$1</span>');
-              
-              // Workers Objects
-              workersObjects.forEach(function(obj){
-                  const regex=new RegExp('\\\\\\\\b'+obj+'\\\\\\\\b','g');
-                  highlighted=highlighted.replace(regex,'<span class="workers-specific">'+obj+'</span>')
-              });
-              
-              // Keywords
-              jsKeywords.forEach(function(keyword){
-                  const regex=new RegExp('\\\\\\\\b'+keyword+'\\\\\\\\b','g');
-                  highlighted=highlighted.replace(regex,function(match){keywordCount++;return '<span class="keyword">'+match+'</span>'})
-              });
-              
-              // Functions
-              highlighted=highlighted.replace(/\\b([a-zA-Z_$][a-zA-Z0-9_$]*)\\s*\\(/g,'<span class="function">$1</span>(');
-              functionCount=(highlighted.match(/<span class="function">/g)||[]).length;
-              
-              // Brackets
-              highlighted=highlighted.replace(/([{}()\\[\\]])/g,'<span class="bracket">$1</span>');
-              
-              // Operators
-              const operators=["+","-","*","/","==","===","!=","!==",">","<",">=","<=","&&","||","!","++","--","%","&","|","^","~","<<",">>",">>>","+=","-=","*=","/=","%=","&=","|=","^=","<<=",">>=",">>>="];
-              operators.forEach(function(op){
-                  const escapedOp = op.replace(/[.*+?^\\$()|\\x5b\\x5d\\x5c]/g, '\\\\$&');
-                  const regex=new RegExp('\\\\\\\\s*('+escapedOp+')\\\\\\\\s*','g');
-                  highlighted=highlighted.replace(regex,' <span class="operator">$1</span> ')
-              });
-              
-              document.getElementById("highlightedOutput").innerHTML=highlighted;
-              
-              const lines=code.split('\\n').length;
-              const chars=code.length;
-              updateStats(lines,chars,keywordCount,functionCount);
-          }
-  
-          function updateStats(lines,chars,keywords,functions){
-              document.getElementById("lineCount").textContent=lines;
-              document.getElementById("charCount").textContent=chars;
-              document.getElementById("keywordCount").textContent=keywords;
-              document.getElementById("functionCount").textContent=functions
-          }
-  
           function updateInputStats(){
               const code=document.getElementById("codeInput").value;
               const lines=code.split('\\n').length;
@@ -680,10 +640,10 @@ export default {
   
           function clearAll(skipToast){
               document.getElementById("codeInput").value="";
-              document.getElementById("highlightedOutput").innerHTML="";
-              updateStats(0,0,0,0);
+              document.getElementById("customKeyInput").value=""; // 清空自定义 Key 输入框
+              
+              // 重置统计信息
               document.getElementById("inputStats").textContent="0 行 · 0 字符";
-              document.getElementById("outputStats").textContent="0 行 · 0 关键字";
               
               // 清除 URL 参数 (保留 token)
               const token = getAuthToken();
