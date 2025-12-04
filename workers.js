@@ -25,6 +25,7 @@ export default {
   
           if (requestToken !== expectedPassword) {
               // 返回 403 Forbidden 页面和密码输入框，以阻止浏览器弹出原生的 Basic Auth 认证框。
+              // Unauthorized Page 风格匹配 Subtle Depth
               const unauthorizedHtml = `<!DOCTYPE html>
               <html lang="zh-CN">
               <head>
@@ -32,23 +33,73 @@ export default {
                   <meta name="viewport" content="width=device-width, initial-scale=1.0">
                   <title>需要访问令牌</title>
                   <style>
-                      body { font-family: sans-serif; text-align: center; padding-top: 50px; background: #f4f4f4; }
-                      .box { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: inline-block; max-width: 350px; }
-                      h2 { color: #667eea; margin-bottom: 20px; }
-                      input[type="password"] { padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
-                      button { padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background 0.3s; }
-                      button:hover { background: #764ba2; }
+                      body { 
+                          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                          text-align: center; 
+                          padding-top: 100px; 
+                          background: #181920; /* Subtle Depth Primary BG */
+                          color: #A9A9A9;
+                      }
+                      .box { 
+                          background: #242731; /* Content Surface */
+                          padding: 40px; 
+                          border-radius: 16px; /* Larger border radius */
+                          box-shadow: 0 10px 30px rgba(0,0,0,0.6); 
+                          display: inline-block; 
+                          max-width: 400px; 
+                          border: 1px solid rgba(255, 255, 255, 0.05);
+                      }
+                      h2 { 
+                          color: #c490ff; /* Accent Color */
+                          margin-bottom: 25px; 
+                          font-size: 1.8em;
+                      }
+                      p { margin-bottom: 15px; }
+                      input[type="password"] { 
+                          padding: 12px; 
+                          margin: 10px 0; 
+                          border: 1px solid #333; 
+                          border-radius: 10px; 
+                          width: 100%; 
+                          box-sizing: border-box; 
+                          background-color: #181920;
+                          color: #F0F0F0;
+                          font-size: 1em;
+                          box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+                      }
+                      button { 
+                          padding: 12px 25px; 
+                          background: linear-gradient(145deg, #c490ff, #aa78f5); /* Soft Gradient */
+                          color: white; 
+                          border: none; 
+                          border-radius: 10px; 
+                          cursor: pointer; 
+                          transition: all 0.3s; 
+                          font-weight: 700;
+                          margin-top: 10px;
+                          box-shadow: 0 4px 15px rgba(196, 144, 255, 0.4);
+                      }
+                      button:hover { 
+                          background: linear-gradient(145deg, #aa78f5, #c490ff);
+                          transform: translateY(-2px);
+                          box-shadow: 0 6px 20px rgba(196, 144, 255, 0.6);
+                      }
+                      .hint {
+                          font-size: 0.8em; 
+                          color: #888; 
+                          margin-top: 20px;
+                      }
                   </style>
               </head>
               <body>
                   <div class="box">
-                      <h2>🔒 需要访问令牌</h2>
+                      <h2>🔒 访问受限</h2>
                       <p>请输入访问令牌/密码以继续操作。</p>
                       <form onsubmit="event.preventDefault(); window.location.href=window.location.pathname+'?token=' + document.getElementById('tokenInput').value;">
                           <input type="password" id="tokenInput" placeholder="访问令牌/密码" required>
-                          <button type="submit">提交</button>
+                          <button type="submit">解锁</button>
                       </form>
-                      <p style="font-size:0.8em; color:#999; margin-top: 15px;">（API 请求请使用 X-Access-Token 头）</p>
+                      <p class="hint">（API 请求请使用 X-Access-Token 头）</p>
                   </div>
               </body>
               </html>`;
@@ -184,116 +235,349 @@ export default {
   <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Workers.js 代码存储工具</title>
+      <title>Workers.js 代码存储工具 - Subtle Depth</title>
       <style>
+          /* --- 全局样式 (Subtle Depth Dark Mode) --- */
           *{margin:0;padding:0;box-sizing:border-box}
-          body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px}
-          .container{max-width:1400px;margin:0 auto;background:rgba(255,255,255,0.95);border-radius:15px;box-shadow:0 20px 40px rgba(0,0,0,0.1);overflow:hidden}
-          header{background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:white;padding:30px;text-align:center;position:relative}
-          header h1{font-size:2.5em;margin-bottom:10px;text-shadow:2px 2px 4px rgba(0,0,0,0.3)}
-          header p{font-size:1.2em;opacity:0.9}
-          /* 布局修改：只保留一列 */
-          .main-content{display:block;padding:30px} 
-          .editor-section{background:white;border-radius:10px;box-shadow:0 5px 15px rgba(0,0,0,0.08);overflow:hidden;display:flex;flex-direction:column}
-          .section-header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:15px 20px;font-weight:bold;display:flex;justify-content:space-between;align-items:center}
+          :root {
+              --bg-primary: #181920; /* Deep Indigo */
+              --bg-secondary: #242731; /* Content Surface */
+              --text-light: #EAEAEA;
+              --text-dark: #A9A9C9;
+              --accent-color: #c490ff; /* Soft Lavender (Main Action) */
+              --primary-color: #00bcd4; /* Cyan (Secondary Focus) */
+              --editor-bg: #1B1E25; 
+              --editor-border: #333948;
+              --key-input-bg: #21242c;
+              --danger-color: #FF6B6B; /* Soft Red */
+              --shadow-dark: rgba(0, 0, 0, 0.7);
+              --shadow-light: rgba(255, 255, 255, 0.05);
+          }
+          body{
+              font-family:'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              background-color: var(--bg-primary);
+              color: var(--text-dark);
+              min-height:100vh;
+              padding:30px 20px;
+          }
+          .container{
+              max-width:1200px;
+              margin:0 auto;
+              background-color: var(--bg-secondary);
+              border-radius:20px; 
+              box-shadow:0 15px 40px var(--shadow-dark);
+              overflow:hidden;
+              display:flex;
+              flex-direction:column;
+              border: 1px solid var(--editor-border);
+              transition: box-shadow 0.3s;
+          }
+          .container:hover {
+              box-shadow: 0 15px 50px var(--shadow-dark), 0 0 10px rgba(196, 144, 255, 0.1);
+          }
+          /* --- Header --- */
+          header{
+              background: var(--bg-secondary);
+              color: white;
+              padding:30px 40px;
+              text-align:left;
+              border-bottom: 2px solid var(--accent-color); /* 紫罗兰色强调 */
+          }
+          header h1{
+              font-size:2.5em;
+              margin-bottom:5px;
+              color: var(--text-light);
+          }
+          header p{
+              font-size:1em;
+              opacity:0.8;
+              color: var(--accent-color);
+              font-weight: 500;
+          }
+          /* --- Main Content --- */
+          .main-content{
+              padding:40px;
+              flex-grow: 1;
+              display: flex;
+              flex-direction: column;
+          } 
+          .editor-section{
+              background-color: var(--editor-bg);
+              border-radius:18px;
+              box-shadow:0 5px 15px var(--shadow-dark);
+              overflow:hidden;
+              display:flex;
+              flex-direction:column;
+              border: 1px solid var(--editor-border);
+          }
+          .section-header{
+              background-color: var(--key-input-bg);
+              color: var(--text-dark);
+              padding:15px 25px;
+              font-weight:400;
+              display:flex;
+              justify-content:space-between;
+              align-items:center;
+              font-family: monospace;
+              border-bottom: 1px solid var(--editor-border);
+              font-size: 0.95em;
+              letter-spacing: 0.5px;
+          }
+          .section-header span:first-child {
+              color: var(--text-light);
+              font-weight: 600;
+          }
           
           /* Key 输入区域样式 */
           .key-input-wrapper {
-              padding: 10px 20px 0;
-              background: #f0f0f5;
-              border-bottom: 1px solid #e0e0e0;
+              padding: 15px 25px;
+              background: var(--editor-bg);
+              border-bottom: 1px solid var(--editor-border);
           }
           .key-input-wrapper label {
               font-size: 14px;
-              font-weight: 600;
-              color: #444;
+              font-weight: 500;
+              color: var(--accent-color);
               display: block;
-              margin-bottom: 5px;
+              margin-bottom: 8px;
           }
           #customKeyInput {
               width: 100%;
-              padding: 8px;
-              border: 1px solid #ccc;
-              border-radius: 4px;
+              padding: 12px;
+              border: 1px solid var(--editor-border);
+              border-radius: 10px;
               box-sizing: border-box;
-              margin-bottom: 10px;
+              background-color: var(--key-input-bg);
+              color: var(--text-light);
+              font-family: monospace;
+              box-shadow: inset 0 2px 5px var(--shadow-dark);
+              transition: border-color 0.3s;
+          }
+          #customKeyInput:focus {
+              border-color: var(--accent-color);
+              box-shadow: inset 0 2px 5px var(--shadow-dark), 0 0 10px rgba(196, 144, 255, 0.3);
           }
   
-          .editor-wrapper{padding:20px;height:70vh;min-height:400px;overflow:auto;flex-grow:1} /* 增加高度 */
-          #codeInput{width:100%;height:100%;border:2px solid #e0e0e0;border-radius:8px;padding:15px;font-family:"Consolas","Monaco","Courier New",monospace;font-size:14px;resize:none;outline:none;transition:border-color 0.3s}
-          #codeInput:focus{border-color:#667eea}
-          .controls{padding:20px 30px;background:#f8f9fa;display:flex;gap:15px;flex-wrap:wrap;justify-content:center}
-          button{padding:12px 24px;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.3s;display:flex;align-items:center;gap:8px}
+          .editor-wrapper{
+              padding:25px;
+              height:65vh; 
+              min-height:400px;
+              overflow:auto;
+              flex-grow:1;
+          } 
+          #codeInput{
+              width:100%;
+              height:100%;
+              border:none; 
+              border-radius:10px;
+              padding:18px;
+              font-family:"Fira Code","Consolas","Monaco",monospace; 
+              font-size:15px;
+              line-height: 1.5;
+              resize:none;
+              outline:none;
+              background-color: var(--key-input-bg); 
+              color: var(--text-light);
+              box-shadow: inset 0 2px 8px var(--shadow-dark);
+          }
+          #codeInput:focus{
+              box-shadow: inset 0 2px 8px var(--shadow-dark), 0 0 5px rgba(0, 188, 212, 0.1);
+          }
           
-          .btn-primary{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white}
-          .btn-primary:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(102,126,234,0.4)}
+          /* --- Scrollbar Styling (Minimalist Subtle Depth) --- */
+          /* For Webkit Browsers (Chrome, Safari, Edge) */
+          .editor-wrapper::-webkit-scrollbar,
+          #codeInput::-webkit-scrollbar,
+          .modal-body::-webkit-scrollbar,
+          body::-webkit-scrollbar {
+              width: 8px; /* 滚动条宽度 */
+              height: 8px;
+          }
+          .editor-wrapper::-webkit-scrollbar-thumb,
+          #codeInput::-webkit-scrollbar-thumb,
+          .modal-body::-webkit-scrollbar-thumb,
+          body::-webkit-scrollbar-thumb {
+              /* 默认极低透明度，实现隐藏效果 */
+              background-color: rgba(196, 144, 255, 0.15); 
+              border-radius: 10px;
+              transition: background-color 0.3s;
+          }
+          .editor-wrapper::-webkit-scrollbar-thumb:hover,
+          #codeInput::-webkit-scrollbar-thumb:hover,
+          .modal-body::-webkit-scrollbar-thumb:hover,
+          body::-webkit-scrollbar-thumb:hover {
+              background-color: var(--accent-color); /* 悬停时高亮 */
+          }
+          .editor-wrapper::-webkit-scrollbar-track,
+          #codeInput::-webkit-scrollbar-track,
+          .modal-body::-webkit-scrollbar-track,
+          body::-webkit-scrollbar-track {
+              background: transparent; /* 轨道透明 */
+          }
+          /* For Firefox */
+          .editor-wrapper, #codeInput, .modal-body, body {
+              scrollbar-width: thin; /* 窄 */
+              scrollbar-color: rgba(196, 144, 255, 0.4) transparent; /* 拇指颜色 透明轨道 */
+          }
           
-          .btn-success{background:linear-gradient(135deg,#42e695 0%,#3bb2b8 100%);color:white}
-          .btn-success:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(66,230,149,0.4)}
-          .btn-success:disabled{opacity:0.7;cursor:not-allowed;transform:none}
+          /* --- Controls (Buttons) --- */
+          .controls{
+              padding:30px 40px;
+              background-color: var(--bg-secondary);
+              border-top: 1px solid var(--editor-border);
+              display:flex;
+              gap:20px;
+              flex-wrap:wrap;
+              justify-content:center;
+          }
+          button{
+              padding:14px 28px; 
+              border:none;
+              border-radius:12px; /* Smoother curves */
+              font-size:16px;
+              font-weight:700;
+              cursor:pointer;
+              transition:all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+              display:flex;
+              align-items:center;
+              gap:10px;
+              text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+          }
           
-          .btn-secondary{background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:white}
-          .btn-secondary:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(240,147,251,0.4)}
+          /* 按钮配色和动画优化 */
+          .btn-success, .btn-primary {
+              background: linear-gradient(160deg, var(--accent-color), #aa78f5);
+              color: white;
+              box-shadow: 0 6px 20px rgba(196, 144, 255, 0.3);
+          }
+          .btn-success:hover, .btn-primary:hover {
+              background: linear-gradient(160deg, #aa78f5, var(--accent-color));
+              transform:translateY(-2px);
+              box-shadow:0 8px 25px rgba(196, 144, 255, 0.5);
+          }
+          .btn-success:disabled{opacity:0.5;cursor:not-allowed;transform:none;box-shadow:none;}
           
-          .btn-danger{background:linear-gradient(135deg,#ff6b6b 0%,#ee5a24 100%);color:white}
-          .btn-danger:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(255,107,107,0.4)}
-          .btn-danger:disabled{opacity:0.7;cursor:not-allowed;transform:none}
+          .btn-secondary{
+              background: var(--key-input-bg);
+              color: var(--primary-color);
+              border: 1px solid var(--editor-border);
+              box-shadow: 0 4px 10px var(--shadow-dark);
+          }
+          .btn-secondary:hover{
+              background:#333948;
+              color: #99FFFF;
+              transform:translateY(-2px);
+              box-shadow:0 6px 15px var(--shadow-dark), 0 0 5px rgba(0, 188, 212, 0.4);
+          }
           
-          .toast{position:fixed;top:20px;right:20px;background:#28a745;color:white;padding:15px 20px;border-radius:8px;box-shadow:0 5px 15px rgba(0,0,0,0.2);opacity:0;transform:translateY(-20px);transition:all 0.3s;z-index:1000}
-          .toast.error{background:#dc3545}
+          .btn-danger{
+              background: var(--danger-color);
+              color: white;
+              box-shadow: 0 6px 20px rgba(255, 107, 107, 0.3);
+          }
+          .btn-danger:hover{
+              background:#FF8585;
+              transform:translateY(-2px);
+              box-shadow:0 8px 25px rgba(255, 107, 107, 0.5);
+          }
+          .btn-danger:disabled{opacity:0.5;cursor:not-allowed;transform:none;box-shadow:none;}
+          
+          /* --- Toast & Loading --- */
+          .toast{
+              position:fixed;top:30px;right:30px;
+              background:var(--accent-color);color:white;
+              padding:15px 25px;border-radius:10px;
+              box-shadow:0 5px 20px rgba(196, 144, 255, 0.3);
+              opacity:0;transform:translateY(-30px);
+              transition:all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1.25);
+              z-index:1000;
+              font-weight: 600;
+          }
+          .toast.error{
+              background:var(--danger-color);
+              box-shadow:0 5px 20px rgba(255, 107, 107, 0.3);
+          }
           .toast.show{opacity:1;transform:translateY(0)}
           
-          .loading-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.8);display:none;justify-content:center;align-items:center;z-index:10}
-          .spinner{width:40px;height:40px;border:4px solid #f3f3f3;border-top:4px solid #667eea;border-radius:50%;animation:spin 1s linear infinite}
+          .loading-overlay{
+              position:absolute;top:0;left:0;right:0;bottom:0;
+              background:rgba(24, 25, 32, 0.9); 
+              display:none;justify-content:center;align-items:center;
+              z-index:10;
+              border-radius: 8px; 
+          }
+          .spinner{
+              width:40px;height:40px;
+              border:4px solid var(--key-input-bg);
+              border-top:4px solid var(--accent-color);
+              border-radius:50%;
+              animation:spin 1s linear infinite;
+          }
           @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
           
-          /* Modal Styles */
+          /* --- Modal Styles (Soft Glassmorphism List) --- */
           .modal-overlay {
               position: fixed;
               top: 0;
               left: 0;
               width: 100%;
               height: 100%;
-              background: rgba(0, 0, 0, 0.6);
+              background: rgba(18, 19, 25, 0.9); 
               display: none; 
               justify-content: center;
               align-items: center;
               z-index: 1000;
+              backdrop-filter: blur(5px); 
           }
           .modal-overlay.active {
               display: flex;
           }
           .modal-content {
-              background: white;
-              padding: 20px;
-              border-radius: 10px;
+              background: var(--bg-secondary);
+              color: var(--text-dark);
+              padding: 30px;
+              border-radius: 20px;
               width: 90%;
-              max-width: 600px;
-              max-height: 80vh;
+              max-width: 550px;
+              max-height: 85vh;
               overflow: hidden;
-              box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+              box-shadow: 0 20px 50px var(--shadow-dark);
               display: flex;
               flex-direction: column;
+              border: 1px solid var(--editor-border);
           }
           .modal-header {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              border-bottom: 1px solid #eee;
-              padding-bottom: 10px;
-              margin-bottom: 10px;
+              border-bottom: 2px solid var(--primary-color);
+              padding-bottom: 15px;
+              margin-bottom: 15px;
           }
           .modal-header h2 {
               margin: 0;
-              color: #667eea;
+              color: var(--text-light);
           }
           .close-btn {
-              background: none;
+              background: var(--danger-color);
               border: none;
-              font-size: 24px;
+              font-size: 20px;
               cursor: pointer;
-              color: #999;
+              color: white;
               line-height: 1;
+              transition: transform 0.3s, background 0.3s;
+              width: 35px;
+              height: 35px;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-weight: 300;
+              box-shadow: 0 4px 10px rgba(255, 107, 107, 0.3);
+          }
+          .close-btn:hover {
+              transform: rotate(90deg) scale(1.1);
+              background: #FF8585;
           }
           .modal-body {
               flex-grow: 1;
@@ -301,43 +585,54 @@ export default {
               padding-right: 5px; 
           }
           .list-item {
-              padding: 8px 10px;
-              border-bottom: 1px dashed #eee;
+              padding: 12px 10px;
+              border-bottom: 1px solid #292c3a;
               cursor: pointer;
-              color: #005cc5;
+              color: var(--primary-color);
               font-family: monospace;
               font-weight: bold;
-              transition: background 0.2s;
+              transition: background 0.2s, color 0.2s;
+              border-radius: 8px;
+              margin-bottom: 5px;
           }
           .list-item:hover {
-              background: #f8f9fa;
-              text-decoration: underline;
+              background: #2a2d3b;
+              color: var(--accent-color);
           }
           .list-empty, .list-hint {
               text-align: center;
-              color: #999;
-              padding: 10px;
+              color: var(--text-dark);
+              padding: 15px;
               font-size: 0.9em;
           }
+          /* --- Media Queries --- */
           @media (max-width:768px){
-              .main-content{padding:20px}
-              header h1{font-size:2em}
-              .controls{flex-direction:column;align-items:stretch}
+              body{padding:10px}
+              .container {
+                  border-radius: 10px;
+                  box-shadow: none;
+              }
+              .main-content{padding:15px}
+              header{padding:20px}
+              header h1{font-size:1.8em}
+              .controls{flex-direction:column;align-items:stretch;padding:15px}
+              button {justify-content: center;}
               .modal-content{max-height: 90vh; width: 95%;}
+              .editor-wrapper{min-height: 300px; height: 50vh;}
           }
       </style>
   </head>
   <body>
       <div class="container">
           <header>
-              <h1>🚀 Workers.js 代码存储工具</h1>
-              <p>基于 Cloudflare Workers KV 的代码片段存储与共享工具</p>
+              <h1>🚀 记事本</h1>
+              <p>基于 Cloudflare Workers KV 的记事本存储与共享工具</p>
           </header>
           
           <div class="main-content">
               <div class="editor-section">
                   <div class="section-header">
-                      <span>📝 代码编辑器</span>
+                      <span>📝 编辑器</span>
                       <span id="inputStats">0 行 · 0 字符</span>
                   </div>
                   
@@ -352,7 +647,7 @@ export default {
                   </div>
               </div>
               
-              </div>
+          </div>
   
           <div class="controls">
               <button class="btn-success" id="btnSave" onclick="saveToCloud()"><span>☁️</span> 保存/分享</button>
@@ -364,7 +659,7 @@ export default {
               <button class="btn-danger" onclick="clearAll()"><span>🗑️</span> 清空内容</button>
           </div>
   
-          </div>
+      </div>
       
       <div id="toast" class="toast"></div>
   
@@ -440,7 +735,7 @@ export default {
   
           async function fetchSavedList() {
               const listBody = document.getElementById('listBody');
-              listBody.innerHTML = '<p class="list-empty">加载中... <div class="spinner" style="margin:10px auto;"></div></p>';
+              listBody.innerHTML = '<p class="list-empty">加载中... <div class="spinner" style="margin:10px auto; border-top-color:#00bcd4;"></div></p>';
               
               const token = getAuthToken();
               const headers = token ? { 'X-Access-Token': token } : {};
@@ -466,7 +761,7 @@ export default {
                           
                           if (!data.list_complete) {
                               const hint = document.createElement('p');
-                              hint.style.cssText = 'font-size:0.8em; color:orange; margin-top:10px; text-align:center;';
+                              hint.style.cssText = 'font-size:0.8em; color:#FFC0CB; margin-top:10px; text-align:center;';
                               hint.textContent = '注意：列表可能不完整（Cloudflare KV限制）。';
                               listBody.appendChild(hint);
                           }
@@ -475,10 +770,10 @@ export default {
                           listBody.innerHTML = '<p class="list-empty">暂无保存的代码片段。</p>';
                       }
                   } else {
-                      listBody.innerHTML = '<p class="list-empty" style="color:red;">加载列表失败: ' + (data.error || 'API 错误') + '</p>';
+                      listBody.innerHTML = '<p class="list-empty" style="color:#FF6B6B;">加载列表失败: ' + (data.error || 'API 错误') + '</p>';
                   }
               } catch (e) {
-                  listBody.innerHTML = '<p class="list-empty" style="color:red;">网络连接失败或 KV 未正确绑定。</p>';
+                  listBody.innerHTML = '<p class="list-empty" style="color:#FF6B6B;">网络连接失败或 KV 未正确绑定。</p>';
               }
           }
           // --- End List Functions ---
@@ -554,7 +849,7 @@ export default {
               loader.style.display = "flex";
               
               const token = getAuthToken();
-              const tokenParam = token ? '&token=' + token : '';
+              const tokenParam = token ? '&token=' + token : {};
               const headers = token ? { 'X-Access-Token': token } : {};
   
               try {
@@ -617,7 +912,8 @@ export default {
           
           function updateInputStats(){
               const code=document.getElementById("codeInput").value;
-              const lines=code.split('\\n').length;
+              // 修正：在 JS 中，换行符是 \\n，但为了统计行数，split 应该用原始的换行符
+              const lines=code.split('\\n').length; 
               const chars=code.length;
               document.getElementById("inputStats").textContent=lines+" 行 · "+chars+" 字符"
           }
@@ -665,7 +961,7 @@ export default {
               else toast.classList.remove("error");
               
               toast.classList.add("show");
-              setTimeout(function(){toast.classList.remove("show")},3000)
+              setTimeout(function(){toast.classList.remove("show"); toast.classList.remove("error");},3000)
           }
       </script>
   </body>
