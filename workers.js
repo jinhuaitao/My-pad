@@ -1,6 +1,7 @@
 /**
- * Workers + R2 NotePad (v9.3 Smart Memory)
- * 优化：创建分享时，自动记忆上次使用的选项（有效期、次数限制等）
+ * Workers + R2 NotePad (v9.3 Smart Memory - 增强文件/分享管理)
+ * 优化：文件管理器支持九宫格/列表视图切换，右键菜单删除功能。
+ * 优化：分享管理新增视图切换（卡片/列表）和右键取消分享功能。
  * 基础：包含 v9.2 的所有功能
  */
 
@@ -378,7 +379,7 @@ function renderSharePage(code, filename, isPublic, token) {
   return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${filename}</title>${FAVICON_TAG}<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" /><link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" /><style>:root{--bg:#0a0a0a;--panel:rgba(30,30,30,0.6);--border:rgba(255,255,255,0.08);--accent:#7c4dff;--text:#d4d4d4}body{margin:0;height:100vh;background:var(--bg);background-image:radial-gradient(circle at 50% 0%,#1a1a2e 0%,#000 70%);color:var(--text);font-family:'JetBrains Mono',Consolas,monospace;display:flex;flex-direction:column;overflow:hidden}header{height:60px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,10,10,0.8);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);z-index:10}.file-title{font-weight:bold;display:flex;align-items:center;gap:8px;font-size:14px;color:#fff}.btn-group{display:flex;gap:10px}.btn{padding:6px 12px;font-size:12px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:rgba(255,255,255,0.05);color:#ccc;transition:0.2s;text-decoration:none;display:flex;align-items:center;gap:5px}.btn:hover{background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2)}.btn-primary{background:var(--accent);color:white;border:none}.btn-primary:hover{background:#6c42e0}.content{flex:1;overflow:auto;position:relative}pre[class*="language-"]{margin:0!important;height:100%;border-radius:0!important;background:transparent!important;padding:20px!important;text-shadow:none!important}code[class*="language-"]{font-family:'JetBrains Mono',Consolas,monospace!important;font-size:14px!important;line-height:1.6!important}.line-numbers .line-numbers-rows{border-right:1px solid var(--border)!important}::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-corner{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:5px;border:2px solid var(--bg)}</style></head><body><header><div class="file-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg> ${filename} ${readOnlyBadge}</div><div class="btn-group"><button class="btn" onclick="downloadFile()">下载</button><button class="btn btn-primary" onclick="copyCode()" id="copyBtn">复制内容</button></div></header><div class="content"><pre class="line-numbers"><code id="codeBlock" class="language-${lang}">${safeCode}</code></pre></div><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script><script>function copyCode(){const c=document.getElementById('codeBlock').innerText;navigator.clipboard.writeText(c).then(()=>{const b=document.getElementById('copyBtn');const o=b.innerText;b.innerText='已复制!';b.style.background='#4caf50';setTimeout(()=>{b.innerText=o;b.style.background=''},2000)})}function downloadFile(){const c=document.getElementById('codeBlock').innerText;const b=new Blob([c],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='${filename}';a.click()}</script></body></html>`;
 }
 
-// --- App Page with Enhanced Modals ---
+// --- App Page with Enhanced Modals (Grid View + Context Menu) ---
 function renderAppPage() {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -405,15 +406,17 @@ ${FAVICON_TAG}
     --text-muted: #888;
     --accent: #7c4dff; 
     --danger: #ff5252;
+    --share-active: #4caf50;
+    --share-locked: #ffbd2e;
   }
-  * { box-sizing: border-box; outline: none; }
+  * { box-sizing: border-box; outline: none; user-select: none; }
   body { margin: 0; padding: 0; height: 100vh; display: flex; background: var(--bg-main); color: var(--text-main); font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; overflow: hidden; }
   
   /* Sidebar */
   .sidebar { width: 64px; background: var(--glass-panel); backdrop-filter: blur(20px); display: flex; flex-direction: column; align-items: center; padding-top: 20px; border-right: 1px solid var(--glass-border); z-index: 20; }
-  .sidebar-btn { width: 42px; height: 42px; margin-bottom: 15px; border-radius: 12px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: var(--text-muted); font-size: 18px; transition: 0.2s; background: transparent; }
+  .sidebar-btn { width: 42px; height: 42px; margin-bottom: 15px; border-radius: 12px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: var(--text-muted); font-size: 18px; transition: 0.2s; background: transparent; position: relative; }
   .sidebar-btn:hover { background: rgba(255,255,255,0.1); color: #fff; transform: scale(1.05); }
-  .sidebar-btn::after { content: attr(data-tip); position: absolute; left: 70px; background: rgba(0,0,0,0.8); color: #fff; padding: 6px 10px; font-size: 12px; border-radius: 6px; white-space: nowrap; opacity: 0; pointer-events: none; transform: translateX(-10px); transition: 0.2s; visibility: hidden; backdrop-filter: blur(4px); }
+  .sidebar-btn::after { content: attr(data-tip); position: absolute; left: 70px; background: rgba(0,0,0,0.8); color: #fff; padding: 6px 10px; font-size: 12px; border-radius: 6px; white-space: nowrap; opacity: 0; pointer-events: none; transform: translateX(-10px); transition: 0.2s; visibility: hidden; backdrop-filter: blur(4px); z-index: 100; }
   .sidebar-btn:hover::after { opacity: 1; transform: translateX(0); visibility: visible; }
 
   /* Main */
@@ -424,7 +427,7 @@ ${FAVICON_TAG}
   .red { background: #ff5f56; } .yellow { background: #ffbd2e; } .green { background: #27c93f; }
   .filename-wrapper { position: relative; display: flex; align-items: center; background: rgba(255,255,255,0.05); border-radius: 6px; padding: 4px 10px; border: 1px solid transparent; transition: 0.3s; }
   .filename-wrapper:focus-within { border-color: var(--accent); background: rgba(255,255,255,0.08); }
-  .filename-input { background: transparent; border: none; color: #fff; font-family: inherit; font-size: 13px; width: 180px; font-weight: 500; }
+  .filename-input { background: transparent; border: none; color: #fff; font-family: inherit; font-size: 13px; width: 180px; font-weight: 500; user-select: text; }
   .status-badge { margin-left: 15px; font-size: 12px; padding: 2px 8px; border-radius: 4px; opacity: 0; transition: 0.3s; background: var(--accent); color: white; transform: translateY(10px); }
   .status-badge.show { opacity: 1; transform: translateY(0); }
   .status-badge.err { background: var(--danger); }
@@ -450,7 +453,7 @@ ${FAVICON_TAG}
   .modal-header { padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
   
   /* Buttons & Inputs */
-  .search-input { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 13px; width: 180px; }
+  .search-input { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 13px; width: 140px; user-select: text; }
   .search-input:focus { border-color: var(--accent); }
   
   .btn { padding: 8px 20px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.05); color: #ccc; cursor: pointer; transition: 0.2s; font-size: 13px; text-decoration: none;}
@@ -460,11 +463,24 @@ ${FAVICON_TAG}
   .btn-danger { background: rgba(255, 82, 82, 0.15); color: #ff5252; border-color: rgba(255, 82, 82, 0.3); }
   .btn-danger:hover { background: rgba(255, 82, 82, 0.3); }
 
-  /* File List Styles */
-  .file-list { overflow-y: auto; padding: 10px; }
-  .file-item { padding: 10px 15px; border-radius: 8px; cursor: pointer; color: #ccc; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; transition: 0.2s; border: 1px solid transparent; }
-  .file-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
-  .file-item.active { background: rgba(124, 77, 255, 0.15); border-color: var(--accent); color: #fff; }
+  /* --- File Manager Views --- */
+  .file-view-container { overflow-y: auto; padding: 15px; flex: 1; }
+  
+  /* List View */
+  .file-list .file-item { padding: 10px 15px; border-radius: 8px; cursor: pointer; color: #ccc; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; transition: 0.2s; border: 1px solid transparent; }
+  .file-list .file-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+  .file-list .file-item.active { background: rgba(124, 77, 255, 0.15); border-color: var(--accent); color: #fff; }
+  
+  /* Grid View (九宫格/网格) */
+  .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+  .file-card { background: rgba(255,255,255,0.05); border: 1px solid transparent; border-radius: 12px; padding: 15px 10px; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: 0.2s; position: relative; height: 110px; }
+  .file-card:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+  .file-card.active { border-color: var(--accent); background: rgba(124, 77, 255, 0.15); }
+  .file-card-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.8; }
+  .file-card-name { font-size: 12px; text-align: center; width: 100%; word-break: break-all; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4; color: #ddd; user-select: text; }
+  .file-card-meta { font-size: 10px; color: #666; margin-top: auto; }
+
+  /* Common File Elements */
   .file-info { display: flex; flex-direction: column; min-width: 0; margin-right: 15px; }
   .file-name { font-family: monospace; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 8px;}
   .file-meta { font-size: 11px; color: #666; margin-top: 4px; display: flex; gap: 10px; }
@@ -476,17 +492,25 @@ ${FAVICON_TAG}
   .sort-btn { font-size:12px; color:#888; cursor:pointer; display:flex; align-items:center; gap:4px; padding:4px 8px; border-radius:4px; transition:0.2s; }
   .sort-btn:hover { color:#fff; background:rgba(255,255,255,0.05); }
   .file-type-js { color: #f1e05a; } 
+  .view-toggle { display: flex; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 2px; border: 1px solid rgba(255,255,255,0.1); margin-right: 10px; }
+  .view-btn { padding: 4px 6px; cursor: pointer; border-radius: 4px; color: #666; display: flex; align-items: center; }
+  .view-btn.active { background: rgba(255,255,255,0.1); color: #fff; }
 
-  /* Form & Share Styles (Updated for Radio) */
+  /* Right Click Context Menu */
+  .context-menu { position: fixed; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1000; display: none; min-width: 140px; padding: 5px; backdrop-filter: blur(10px); }
+  .ctx-item { padding: 8px 12px; cursor: pointer; font-size: 13px; color: #ddd; display: flex; align-items: center; gap: 10px; border-radius: 4px; transition: 0.1s; }
+  .ctx-item:hover { background: var(--accent); color: #fff; }
+  .ctx-item.danger { color: #ff5252; }
+  .ctx-item.danger:hover { background: rgba(255, 82, 82, 0.2); color: #ff5252; }
+  .ctx-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0; }
+
+  /* Form & Share Styles */
   .form-group { margin-bottom: 20px; }
   .form-label { display: block; margin-bottom: 8px; font-size: 12px; color: #aaa; }
-  .form-control { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px; }
+  .form-control { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px; user-select: text; }
   
   .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
-  .radio-label { 
-      cursor: pointer; padding: 8px 12px; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); 
-      font-size: 13px; color: #ccc; transition: 0.2s; display: flex; align-items: center; gap: 6px;
-  }
+  .radio-label { cursor: pointer; padding: 8px 12px; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); font-size: 13px; color: #ccc; transition: 0.2s; display: flex; align-items: center; gap: 6px; }
   .radio-label:hover { background: rgba(255,255,255,0.1); }
   .radio-label input { margin: 0; accent-color: var(--accent); }
   .radio-label:has(input:checked) { border-color: var(--accent); background: rgba(124, 77, 255, 0.1); color: #fff; }
@@ -498,10 +522,36 @@ ${FAVICON_TAG}
   .confirm-actions { display: flex; justify-content: center; gap: 15px; }
 
   /* Share Manager Toolbar */
-  .mgr-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 10px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--glass-border); }
+  .mgr-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--glass-border); }
   .chk-label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: #ccc; }
   .chk-label:hover { color: #fff; }
   .share-chk { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+  
+  /* --- Share List Styles (Optimized for Card/List Hybrid) --- */
+  .share-list-container { overflow-y: auto; padding: 15px; flex: 1; }
+  
+  /* Share Grid View (Card view in grid layout) */
+  .share-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+  .share-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .share-card-item { 
+      padding: 12px 15px; border-radius: 10px; background: rgba(255,255,255,0.05); 
+      border: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;
+      transition: 0.2s; position: relative; cursor: pointer;
+  }
+  .share-card-item:hover { background: rgba(255,255,255,0.1); }
+
+  .share-info-left { display: flex; align-items: center; min-width: 0; flex-grow: 1; }
+  .share-file-id { font-size: 13px; font-weight: 500; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+  .share-details { font-size: 11px; color: #999; margin-left: 10px; }
+  .share-meta-badges { margin-left: 15px; display: flex; gap: 10px; font-size: 11px; }
+  .share-badge { padding: 3px 8px; border-radius: 4px; font-weight: 500; }
+  .badge-locked { background: rgba(255, 189, 46, 0.2); color: var(--share-locked); }
+  .badge-unlocked { background: rgba(76, 175, 80, 0.2); color: var(--share-active); }
+  .badge-expired { background: rgba(255, 82, 82, 0.2); color: var(--danger); }
+  .share-actions { display: flex; align-items: center; opacity: 0.7; transition: 0.2s; }
+  .share-card-item:hover .share-actions { opacity: 1; }
+
 
   @media (max-width: 768px) {
     body { flex-direction: column-reverse; } 
@@ -512,6 +562,8 @@ ${FAVICON_TAG}
     .win-controls { display: none; }
     .filename-input { width: 120px; }
     .modal { width: 95%; }
+    .share-meta-badges { display: none; }
+    .share-card-item .share-actions { opacity: 1; }
   }
 </style>
 </head>
@@ -523,7 +575,7 @@ ${FAVICON_TAG}
     <div class="sidebar-btn" onclick="act.openShareDialog()" data-tip="创建分享"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg></div>
     <div class="sidebar-btn" onclick="act.listShares()" data-tip="分享管理"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
     <div class="sidebar-btn" onclick="act.copy()" data-tip="复制内容"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></div>
-    <div class="sidebar-btn" onclick="act.list()" data-tip="文件列表"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></div>
+    <div class="sidebar-btn" onclick="act.list()" data-tip="文件管理"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></div>
     <div style="flex-grow:1"></div>
     <div class="sidebar-btn" onclick="location.href='/api/logout'" data-tip="注销"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></div>
   </nav>
@@ -552,16 +604,22 @@ ${FAVICON_TAG}
     <div class="modal">
       <div class="modal-header">
         <div style="display:flex;align-items:center;">
-            <span style="font-size:16px;font-weight:600;color:#fff">📂 文件列表</span>
+            <span style="font-size:16px;font-weight:600;color:#fff">📂 文件管理</span>
             <span id="fileCount" class="modal-stats" style="margin-left:10px;font-size:12px;color:#888">0 items</span>
         </div>
         <div style="display:flex; gap:10px; align-items:center">
+             <div class="view-toggle">
+                <div class="view-btn active" id="viewBtnGrid" onclick="setViewMode('grid')" data-target="file" title="九宫格"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></div>
+                <div class="view-btn" id="viewBtnList" onclick="setViewMode('list')" data-target="file" title="列表"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></div>
+             </div>
              <div class="sort-btn" onclick="toggleSort()" id="sortLabel">🕒 时间</div>
              <input type="text" class="search-input" id="search" placeholder="搜索..." oninput="filterList()">
              <div style="cursor:pointer; padding:5px" onclick="closeModal()">✕</div>
         </div>
       </div>
-      <div id="fileList" class="file-list">加载中...</div>
+      <div id="fileContainer" class="file-view-container">
+        <div id="fileList" class="file-grid">加载中...</div>
+      </div>
     </div>
   </div>
 
@@ -619,10 +677,18 @@ ${FAVICON_TAG}
             <div style="cursor:pointer; padding:5px" onclick="document.getElementById('shareMgrModal').classList.remove('open');setTimeout(()=>document.getElementById('shareMgrModal').style.display='none',300)">✕</div>
         </div>
         <div class="mgr-toolbar">
-            <label class="chk-label"><input type="checkbox" id="selectAllShare" class="share-chk" onclick="toggleSelectAll()"> 全选</label>
-            <button id="batchDelBtn" class="btn btn-danger" style="padding:4px 10px;font-size:12px;display:none" onclick="act.openBatchDelModal()">批量删除</button>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label class="chk-label"><input type="checkbox" id="selectAllShare" class="share-chk" onclick="toggleSelectAll()"> 全选</label>
+                <button id="batchDelBtn" class="btn btn-danger" style="padding:4px 10px;font-size:12px;display:none" onclick="act.openBatchDelModal()">批量删除</button>
+            </div>
+            <div class="view-toggle">
+                <div class="view-btn active" id="shareViewBtnGrid" onclick="setShareViewMode('grid')" data-target="share" title="卡片视图"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></div>
+                <div class="view-btn" id="shareViewBtnList" onclick="setShareViewMode('list')" data-target="share" title="紧凑列表"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></div>
+            </div>
         </div>
-        <div id="shareList" class="file-list" style="max-height:60vh">加载中...</div>
+        <div id="shareListContainer" class="share-list-container">
+            <div id="shareList" class="share-grid">加载中...</div>
+        </div>
     </div>
   </div>
 
@@ -683,6 +749,20 @@ ${FAVICON_TAG}
     </div>
   </div>
 
+  <div id="ctxMenu" class="context-menu">
+      <div class="ctx-item" onclick="ctxAct.open()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg> 打开</div>
+      <div class="ctx-item" onclick="ctxAct.download()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> 下载</div>
+      <div class="ctx-divider"></div>
+      <div class="ctx-item danger" onclick="ctxAct.del()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> 删除</div>
+  </div>
+
+  <div id="shareCtxMenu" class="context-menu">
+      <div class="ctx-item" onclick="shareCtxAct.copyLink()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> 复制链接</div>
+      <div class="ctx-divider"></div>
+      <div class="ctx-item danger" onclick="shareCtxAct.deleteShare()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> 取消分享</div>
+  </div>
+
+
   <script>
     const dom = {
       filename: document.getElementById('filename'),
@@ -701,14 +781,23 @@ ${FAVICON_TAG}
       sharePwdInput: document.getElementById('sharePwdInput'),
       shareResult: document.getElementById('shareResult'),
       shareLinkInput: document.getElementById('shareLinkInput'),
-      shareList: document.getElementById('shareList'),
+      shareListContainer: document.getElementById('shareListContainer'),
+      shareList: document.getElementById('shareList'), // The actual element where share items go
       // Share Delete Confirm
       shareDelOverlay: document.getElementById('shareDelOverlay'),
       // Batch
       selectAllShare: document.getElementById('selectAllShare'),
       batchDelBtn: document.getElementById('batchDelBtn'),
       batchDelOverlay: document.getElementById('batchDelOverlay'),
-      batchDelMsg: document.getElementById('batchDelMsg')
+      batchDelMsg: document.getElementById('batchDelMsg'),
+      // Context Menu
+      ctxMenu: document.getElementById('ctxMenu'),
+      shareCtxMenu: document.getElementById('shareCtxMenu'),
+      // View Toggles
+      fileViewBtnGrid: document.getElementById('viewBtnGrid'),
+      fileViewBtnList: document.getElementById('viewBtnList'),
+      shareViewBtnGrid: document.getElementById('shareViewBtnGrid'),
+      shareViewBtnList: document.getElementById('shareViewBtnList')
     };
 
     let currentId = null;
@@ -717,6 +806,10 @@ ${FAVICON_TAG}
     let sortByDate = true;
     let pendingAction = null;
     let pendingShareToken = null;
+    let fileViewMode = localStorage.getItem('np_file_view_mode') || 'grid'; // 文件视图模式
+    let shareViewMode = localStorage.getItem('np_share_view_mode') || 'grid'; // 分享视图模式
+    let targetCtxFile = null; // 文件右键目标
+    let targetCtxShareToken = null; // 分享右键目标
 
     // CodeMirror Init
     const editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
@@ -844,21 +937,17 @@ ${FAVICON_TAG}
         });
       },
 
-      // --- New Share Logic ---
       openShareDialog: () => {
         if(!currentId) return showBadge('请先保存文件', true);
         if(isUnsaved) return showBadge('请先保存更改', true);
         
-        // Reset UI
         dom.sharePwdInput.value = '';
         dom.shareResult.style.display = 'none';
         
-        // Load Defaults from LocalStorage
         const defPwd = localStorage.getItem('np_share_pwd') || 'off';
         const defExp = localStorage.getItem('np_share_exp') || '86400';
         const defLim = localStorage.getItem('np_share_lim') || '0';
 
-        // Apply to Radios
         const pwdRad = document.querySelector(\`input[name="sharePwdOpt"][value="\${defPwd}"]\`);
         if(pwdRad) pwdRad.checked = true;
         togglePwdInput(defPwd === 'on');
@@ -885,7 +974,6 @@ ${FAVICON_TAG}
           const exp = parseInt(expVal);
           const limit = parseInt(limitVal);
 
-          // Save Defaults
           localStorage.setItem('np_share_pwd', pwdVal);
           localStorage.setItem('np_share_exp', expVal);
           localStorage.setItem('np_share_lim', limitVal);
@@ -908,8 +996,9 @@ ${FAVICON_TAG}
       listShares: async () => {
           openModal(dom.shareMgrModal);
           dom.shareList.innerHTML = '<div style="padding:20px;text-align:center">加载中...</div>';
-          dom.batchDelBtn.style.display = 'none'; // reset
-          dom.selectAllShare.checked = false; // reset
+          dom.batchDelBtn.style.display = 'none'; 
+          dom.selectAllShare.checked = false; 
+          setShareViewMode(shareViewMode); // 确保视图模式正确初始化
           try {
               const res = await api('/api/share/list');
               if(res.success) renderShareList(res.shares);
@@ -932,7 +1021,6 @@ ${FAVICON_TAG}
           } catch(e) { alert('操作失败'); }
       },
 
-      // Batch Delete
       openBatchDelModal: () => {
           const selected = document.querySelectorAll('.share-item-chk:checked');
           if (selected.length === 0) return;
@@ -952,7 +1040,6 @@ ${FAVICON_TAG}
               showBadge('批量取消成功');
           } catch(e) { alert('批量操作失败: ' + e.message); }
       },
-      // ---------------------
 
       copy: () => navigator.clipboard.writeText(editor.getValue()).then(() => showBadge('已复制')),
 
@@ -974,7 +1061,8 @@ ${FAVICON_TAG}
           const res = await api('/api/delete?id=' + encodeURIComponent(targetId), { method: 'DELETE' });
           if (res.success) {
             if (currentId === targetId) { isUnsaved = false; act.new(); }
-            act.list(); showBadge('删除成功');
+            act.list(); 
+            showBadge('删除成功');
           }
         } catch (e) { showBadge(e.message, true); }
       },
@@ -995,6 +1083,82 @@ ${FAVICON_TAG}
         } catch (e) { dom.list.innerHTML = '加载失败'; }
       }
     };
+
+    // --- Context Menu Actions (文件右键菜单操作) ---
+    const ctxAct = {
+        open: () => { if(targetCtxFile) loadFromFile(targetCtxFile); closeCtxMenu(dom.ctxMenu); },
+        download: () => { if(targetCtxFile) act.download(targetCtxFile); closeCtxMenu(dom.ctxMenu); },
+        del: () => { 
+            if(targetCtxFile) act.del(targetCtxFile); 
+            closeCtxMenu(dom.ctxMenu); 
+        }
+    };
+
+    // --- Share Context Menu Actions (分享右键菜单操作) ---
+    const shareCtxAct = {
+        copyLink: () => { 
+            if(targetCtxShareToken) navigator.clipboard.writeText(window.location.origin + '/share?k=' + targetCtxShareToken).then(() => showBadge('链接已复制'));
+            closeCtxMenu(dom.shareCtxMenu); 
+        },
+        deleteShare: () => {
+            if(targetCtxShareToken) act.delShare(targetCtxShareToken);
+            closeCtxMenu(dom.shareCtxMenu); 
+        }
+    };
+
+    function showCtxMenu(menuElement, x, y) {
+        // 先关闭所有菜单
+        dom.ctxMenu.style.display = 'none';
+        dom.shareCtxMenu.style.display = 'none';
+
+        menuElement.style.left = x + 'px';
+        menuElement.style.top = y + 'px';
+        menuElement.style.display = 'block';
+    }
+
+    function closeCtxMenu(menuElement) {
+        menuElement.style.display = 'none';
+        // 清除目标变量
+        if (menuElement === dom.ctxMenu) targetCtxFile = null;
+        if (menuElement === dom.shareCtxMenu) targetCtxShareToken = null;
+    }
+
+    window.addEventListener('click', (e) => {
+        if (!dom.ctxMenu.contains(e.target)) closeCtxMenu(dom.ctxMenu);
+        if (!dom.shareCtxMenu.contains(e.target)) closeCtxMenu(dom.shareCtxMenu);
+    });
+    
+    document.addEventListener('contextmenu', (e) => {
+        // 阻止默认浏览器菜单，交给自定义逻辑处理
+        if (dom.modalOverlay.classList.contains('open') || dom.shareMgrModal.classList.contains('open')) {
+            const isFileItem = e.target.closest('.file-card') || e.target.closest('.file-item');
+            const isShareItem = e.target.closest('.share-card-item');
+
+            if (isFileItem || isShareItem) {
+                e.preventDefault();
+            }
+        }
+    });
+
+    // --- View Mode Logic ---
+
+    function setViewMode(mode) {
+        fileViewMode = mode;
+        localStorage.setItem('np_file_view_mode', mode);
+        dom.fileViewBtnGrid.classList.toggle('active', mode === 'grid');
+        dom.fileViewBtnList.classList.toggle('active', mode === 'list');
+        dom.list.className = mode === 'grid' ? 'file-grid' : 'file-list';
+        renderList(fileCache);
+    }
+    
+    function setShareViewMode(mode) {
+        shareViewMode = mode;
+        localStorage.setItem('np_share_view_mode', mode);
+        dom.shareViewBtnGrid.classList.toggle('active', mode === 'grid');
+        dom.shareViewBtnList.classList.toggle('active', mode === 'list');
+        dom.shareList.className = mode === 'grid' ? 'share-grid' : 'share-list';
+        renderShareList(dom.shareList.shareData || []); // 重新渲染列表
+    }
 
     async function api(url, opts = {}) {
       const res = await fetch(url, opts);
@@ -1041,8 +1205,14 @@ ${FAVICON_TAG}
     function renderList(files) {
       dom.fileCount.innerText = files.length + ' 文件';
       dom.list.innerHTML = '';
+      
+      // Init View Mode UI
+      dom.fileViewBtnGrid.classList.toggle('active', fileViewMode === 'grid');
+      dom.fileViewBtnList.classList.toggle('active', fileViewMode === 'list');
+      dom.list.className = fileViewMode === 'grid' ? 'file-grid' : 'file-list';
+
       if(files.length === 0) {
-        dom.list.innerHTML = '<div style="padding:30px;text-align:center;color:#666;display:flex;flex-direction:column;align-items:center;gap:10px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg><span>无结果</span></div>';
+        dom.list.innerHTML = '<div style="padding:30px;text-align:center;color:#666;width:100%;grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:10px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg><span>无结果</span></div>';
         return;
       }
       
@@ -1053,7 +1223,7 @@ ${FAVICON_TAG}
 
       files.forEach(f => {
         const div = document.createElement('div');
-        div.className = 'file-item ' + (f.key === currentId ? 'active' : '');
+        const isActive = f.key === currentId;
         
         let icon = '📄';
         let typeClass = 'file-type-txt';
@@ -1065,51 +1235,100 @@ ${FAVICON_TAG}
         const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         const sizeStr = f.size < 1024 ? f.size + 'B' : (f.size/1024).toFixed(1) + 'KB';
 
-        div.innerHTML = \`
-          <div class="file-info" style="flex-grow:1" onclick="loadFromFile('\${f.key}')">
-            <div class="file-name">
-                <span class="\${typeClass}">\${icon}</span> \${f.key}
-            </div>
-            <div class="file-meta">
-                <span>\${dateStr}</span> <span>·</span> <span>\${sizeStr}</span>
-            </div>
-          </div>
-          <div class="list-actions">
-            <div class="icon-btn download" onclick="event.stopPropagation(); act.download('\${f.key}')" title="下载"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
-            <div class="icon-btn delete" onclick="event.stopPropagation(); act.del('\${f.key}')" title="删除"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
-          </div>
-        \`;
+        // Add Context Menu Event (for both List and Grid items)
+        div.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            targetCtxFile = f.key;
+            showCtxMenu(dom.ctxMenu, e.clientX, e.clientY);
+        });
+
+        if (fileViewMode === 'grid') {
+            // Grid View (九宫格)
+            div.className = 'file-card ' + (isActive ? 'active' : '');
+            div.onclick = () => loadFromFile(f.key);
+            div.innerHTML = \`
+                <div class="file-card-icon \${typeClass}">\${icon}</div>
+                <div class="file-card-name" title="\${f.key}">\${f.key}</div>
+                <div class="file-card-meta">\${sizeStr}</div>
+            \`;
+        } else {
+            // List View (列表)
+            div.className = 'file-item ' + (isActive ? 'active' : '');
+            div.innerHTML = \`
+              <div class="file-info" style="flex-grow:1" onclick="loadFromFile('\${f.key}')">
+                <div class="file-name">
+                    <span class="\${typeClass}">\${icon}</span> \${f.key}
+                </div>
+                <div class="file-meta">
+                    <span>\${dateStr}</span> <span>·</span> <span>\${sizeStr}</span>
+                </div>
+              </div>
+              <div class="list-actions">
+                <div class="icon-btn download" onclick="event.stopPropagation(); act.download('\${f.key}')" title="下载"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+                <div class="icon-btn delete" onclick="event.stopPropagation(); act.del('\${f.key}')" title="删除"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
+              </div>
+            \`;
+        }
         dom.list.appendChild(div);
       });
     }
 
     function renderShareList(shares) {
+        dom.shareList.shareData = shares; // 缓存数据
         dom.shareList.innerHTML = '';
+        dom.shareList.className = shareViewMode === 'grid' ? 'share-grid' : 'share-list';
+
         if(shares.length === 0) {
             dom.shareList.innerHTML = '<div style="padding:20px;text-align:center;color:#666">暂无活跃分享</div>';
             return;
         }
+
         shares.forEach(s => {
             const div = document.createElement('div');
-            div.className = 'file-item';
+            div.className = 'share-card-item';
+            
+            const isExpired = s.expire && s.expire < Date.now();
+            const isLimitReached = s.maxVisits > 0 && s.views >= s.maxVisits;
+            
+            const lockedBadge = s.password ? 
+                                 '<span class="share-badge badge-locked">🔒 密码</span>' : 
+                                 '<span class="share-badge badge-unlocked">🌐 公开</span>';
+            const statusBadge = isExpired ? 
+                                 '<span class="share-badge badge-expired">已过期</span>' :
+                                 (isLimitReached ? '<span class="share-badge badge-expired">已达上限</span>' : '');
+
             const expStr = s.expire ? new Date(s.expire).toLocaleString() : '永久';
-            const locked = s.password ? '🔒' : '🌐';
             const limitStr = s.maxVisits > 0 ? s.maxVisits : '∞';
             
             div.innerHTML = \`
-              <div style="padding-right:10px;display:flex;align-items:center">
+              <div class="share-info-left">
                   <input type="checkbox" class="share-item-chk share-chk" value="\${s.token}" onclick="updateBatchBtn()">
+                  <div style="margin-left: 15px; min-width: 0;">
+                      <div class="share-file-id" title="文件ID: \${s.fileId}">\${s.fileId}</div>
+                      <div class="share-details">
+                          <span>到期: \${expStr}</span> · 
+                          <span>访问: \${s.views||0} / \${limitStr}</span>
+                      </div>
+                  </div>
               </div>
-              <div class="file-info" style="flex-grow:1">
-                <div class="file-name">\${locked} \${s.fileId}</div>
-                <div class="file-meta">过期: \${expStr} · 浏览: \${s.views||0} / \${limitStr}</div>
-              </div>
-              <div class="list-actions">
-                 <div class="icon-btn" onclick="act.delShare('\${s.token}')" title="删除链接">
-                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
-                 </div>
+              
+              <div class="share-actions">
+                  <div class="share-meta-badges">
+                      \${lockedBadge}
+                      \${statusBadge}
+                  </div>
+                  <div class="icon-btn delete" onclick="event.stopPropagation(); act.delShare('\${s.token}')" title="取消分享">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                  </div>
               </div>
             \`;
+
+            // Add Share Context Menu Event
+            div.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                targetCtxShareToken = s.token;
+                showCtxMenu(dom.shareCtxMenu, e.clientX, e.clientY);
+            });
             dom.shareList.appendChild(div);
         });
     }
@@ -1130,6 +1349,15 @@ ${FAVICON_TAG}
     }
 
     (async function() {
+      // 首次加载时初始化视图模式图标和DOM class
+      fileViewMode = localStorage.getItem('np_file_view_mode') || 'grid';
+      shareViewMode = localStorage.getItem('np_share_view_mode') || 'grid';
+
+      dom.fileViewBtnGrid.classList.toggle('active', fileViewMode === 'grid');
+      dom.fileViewBtnList.classList.toggle('active', fileViewMode === 'list');
+      dom.shareViewBtnGrid.classList.toggle('active', shareViewMode === 'grid');
+      dom.shareViewBtnList.classList.toggle('active', shareViewMode === 'list');
+      
       const params = new URLSearchParams(location.search);
       const id = params.get('id');
       if (id) {
