@@ -81,7 +81,7 @@ R2 Bucket: 选择你在“第二步”中创建的存储桶 (my-notepad-storage)
 
 点击 Deploy 保存。
 
-## 2. 绑定 Turnstile 环境变量
+## 2. 绑定 Turnstile 环境变量 (可选，但推荐)
 在同一个页面，向上滚动到 Environment Variables 区域。
 
 点击 Add variable。
