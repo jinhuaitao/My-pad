@@ -77,7 +77,7 @@ Widget Mode: 选择 Managed (推荐) 或 Non-interactive。
 
 Variable name (变量名): 必须填写 MY_BUCKET (注意：必须完全一致，大小写敏感，因为代码里写的是 env.MY_BUCKET)。
 
-R2 Bucket: 选择你在“第二步”中创建的存储桶 (e.g., my-notepad-storage)。
+R2 Bucket: 选择你在“第二步”中创建的存储桶 (my-notepad-storage)。
 
 点击 Deploy 保存。
 
