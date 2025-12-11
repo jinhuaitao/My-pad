@@ -97,7 +97,7 @@ R2 Bucket: 选择你在“第二步”中创建的存储桶 (my-notepad-storage)
 注意：如果你不想用 Turnstile，可以在环境变量中不添加这两个 Key，或者去代码里把相关逻辑删掉，但建议保留以增加安全性。
 
 # 第七步：初始化系统
-点击 Worker 页面上的 Visit 链接（或者直接访问你的 xxx.workers.dev 域名）。
+点击 Worker 页面上的 Visit 链接（或者直接访问你的 xxx.workers.dev 域名）。（如添加Turnstile验证，请先绑定域名【Turnstile添加的域名】）
 
 第一次访问时，系统检测到没有配置文件，会自动跳转到 初始化页面。
 
